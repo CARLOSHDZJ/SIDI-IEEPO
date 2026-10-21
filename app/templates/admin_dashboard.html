@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard y Analítica | SIDI - IEEPO{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js para visualización de KPIs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Encabezado con Botones de Exportación -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200 gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">Dashboard & Analítica Avanzada</h1>
+            <p class="text-xs text-slate-500 mt-1">Métricas de desempeño, tasa de éxito y tiempos de respuesta en tiempo real</p>
+        </div>
+
+        <div class="flex items-center space-x-2.5">
+            <a href="/admin/exportar?formato=excel&fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&region={{ filtros.region }}&nivel={{ filtros.nivel }}" 
+               class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center space-x-2 shadow-sm transition">
+                <i class="fa-solid fa-file-excel"></i>
+                <span>Exportar a Excel</span>
+            </a>
+            <a href="/admin/exportar?formato=csv&fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&region={{ filtros.region }}&nivel={{ filtros.nivel }}" 
+               class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-bold text-xs flex items-center space-x-2 shadow-sm transition">
+                <i class="fa-solid fa-file-csv"></i>
+                <span>Exportar CSV</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Barra de Filtros -->
+    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 my-6">
+        <form method="GET" action="/admin" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div>
+                <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Desde</label>
+                <input type="date" name="fecha_inicio" value="{{ filtros.fecha_inicio }}" 
+                       class="w-full px-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary">
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Hasta</label>
+                <input type="date" name="fecha_fin" value="{{ filtros.fecha_fin }}" 
+                       class="w-full px-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary">
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Región</label>
+                <select name="region" class="w-full px-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary">
+                    <option value="">Todas las Regiones</option>
+                    {% for reg in catalogo_regiones %}
+                    <option value="{{ reg }}" {% if filtros.region == reg %}selected{% endif %}>{{ reg }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Nivel Educativo</label>
+                <select name="nivel" class="w-full px-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary">
+                    <option value="">Todos los Niveles</option>
+                    {% for niv in catalogo_niveles %}
+                    <option value="{{ niv }}" {% if filtros.nivel == niv %}selected{% endif %}>{{ niv }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end space-x-2">
+                <button type="submit" class="w-full btn-primary py-2 px-3 rounded-md text-xs font-bold flex items-center justify-center space-x-1 shadow-sm">
+                    <i class="fa-solid fa-filter"></i>
+                    <span>Filtrar</span>
+                </button>
+                <a href="/admin" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md text-xs font-bold transition" title="Limpiar Filtros">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tarjetas de KPIs Principales -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <!-- Total Solicitudes -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-inbox"></i>
+            </div>
+            <div>
+                <p class="text-xs text-slate-500 font-bold uppercase">Total Solicitudes</p>
+                <h3 class="text-2xl font-black text-slate-800">{{ kpis.total }}</h3>
+                <span class="text-[10px] text-slate-400">Registros filtrados</span>
+            </div>
+        </div>
+
+        <!-- Tasa de Éxito (Enviadas) -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <p class="text-xs text-emerald-600 font-bold uppercase">Tasa Éxito</p>
+                <h3 class="text-2xl font-black text-slate-800">{{ kpis.enviadas }}</h3>
+                <span class="text-[10px] font-bold text-emerald-600">{{ kpis.tasa_exito }}% de efectividad</span>
+            </div>
+        </div>
+
+        <!-- CCT No Encontradas -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-circle-question"></i>
+            </div>
+            <div>
+                <p class="text-xs text-orange-600 font-bold uppercase">CCTs No Registradas</p>
+                <h3 class="text-2xl font-black text-slate-800">{{ kpis.no_encontradas }}</h3>
+                <span class="text-[10px] font-bold text-orange-600">{{ kpis.tasa_no_encontradas }}% del total</span>
+            </div>
+        </div>
+
+        <!-- En Cola / Procesando -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <div>
+                <p class="text-xs text-blue-600 font-bold uppercase">En Cola / Proceso</p>
+                <h3 class="text-2xl font-black text-slate-800">{{ kpis.en_cola }}</h3>
+                <span class="text-[10px] text-blue-500">Secuencial FIFO</span>
+            </div>
+        </div>
+
+        <!-- Errores de Portal -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <p class="text-xs text-rose-600 font-bold uppercase">Errores Portal</p>
+                <h3 class="text-2xl font-black text-slate-800">{{ kpis.errores }}</h3>
+                <span class="text-[10px] text-rose-500">{{ kpis.tasa_errores }}% con fallos</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficas de Analítica y Distribución -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Gráfica de Estados -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center">
+                <i class="fa-solid fa-chart-donut mr-2 text-primary"></i> Proporción de Estados
+            </h3>
+            <div class="relative h-64 flex items-center justify-center">
+                <canvas id="chartEstados"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfica por Regiones -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center">
+                <i class="fa-solid fa-map-location-dot mr-2 text-secondary"></i> Solicitudes por Región
+            </h3>
+            <div class="relative h-64">
+                <canvas id="chartRegiones"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bitácora Rápida de Solicitudes Recientes -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-base font-bold text-slate-800">Últimas Solicitudes Atendidas</h3>
+                <p class="text-xs text-slate-500">Visualización de las peticiones más recientes procesadas</p>
+            </div>
+            <a href="/admin/solicitudes" class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-bold">
+                Ver Directorio Completo &rarr;
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-600">
+                <thead class="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
+                    <tr>
+                        <th class="px-5 py-3">Folio</th>
+                        <th class="px-5 py-3">CCT</th>
+                        <th class="px-5 py-3">Solicitante</th>
+                        <th class="px-5 py-3">Región / Nivel</th>
+                        <th class="px-5 py-3">Fecha</th>
+                        <th class="px-5 py-3">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for sol in solicitudes_recientes %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="px-5 py-3.5 font-mono font-bold text-slate-900">{{ sol.folio }}</td>
+                        <td class="px-5 py-3.5 font-mono font-bold text-primary">{{ sol.cct }}</td>
+                        <td class="px-5 py-3.5">
+                            <span class="font-semibold text-slate-800">{{ sol.nombre_solicitante }}</span>
+                            <div class="text-[11px] text-slate-400">{{ sol.cargo }}</div>
+                        </td>
+                        <td class="px-5 py-3.5">{{ sol.region }} <span class="text-slate-400">({{ sol.nivel_educativo }})</span></td>
+                        <td class="px-5 py-3.5 text-slate-400">{{ sol.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td class="px-5 py-3.5">
+                            {% if sol.estado == 'ENVIADO' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                    ENVIADO
+                                </span>
+                            {% elif sol.estado == 'CCT_NO_ENCONTRADA' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800">
+                                    NO ENCONTRADA
+                                </span>
+                            {% elif sol.estado == 'PENDIENTE_VERIFICACION' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
+                                    ESPERANDO OTP
+                                </span>
+                            {% elif sol.estado == 'PENDIENTE' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                    EN COLA
+                                </span>
+                            {% elif sol.estado == 'PROCESANDO' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 animate-pulse">
+                                    PROCESANDO
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                    ERROR
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-slate-400 italic">No hay solicitudes registradas con estos filtros.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Gráfica de Estados (Doughnut)
+    const ctxEstados = document.getElementById('chartEstados').getContext('2d');
+    new Chart(ctxEstados, {
+        type: 'doughnut',
+        data: {
+            labels: ['Enviados (Éxito)', 'CCT No Encontrada', 'En Cola', 'Errores Portal'],
+            datasets: [{
+                data: [{{ kpis.enviadas }}, {{ kpis.no_encontradas }}, {{ kpis.en_cola }}, {{ kpis.errores }}],
+                backgroundColor: ['#10B981', '#F97316', '#3B82F6', '#EF4444'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+            }
+        }
+    });
+
+    // Gráfica de Regiones (Bar)
+    const ctxRegiones = document.getElementById('chartRegiones').getContext('2d');
+    const regionesLabels = {{ datos_grafica_regiones['etiquetas'] | tojson }};
+    const regionesData = {{ datos_grafica_regiones['totales'] | tojson }};
+
+    new Chart(ctxRegiones, {
+        type: 'bar',
+        data: {
+            labels: regionesLabels,
+            datasets: [{
+                label: 'Solicitudes',
+                data: regionesData,
+                backgroundColor: '{{ config.get("color_primario", "#8B1D42") }}',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: { ticks: { font: { size: 10 } } }
+            }
+        }
+    });
+</script>
+{% endblock %}

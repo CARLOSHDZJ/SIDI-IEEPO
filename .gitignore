@@ -1,0 +1,44 @@
+# Entornos virtuales Python
+venv/
+.venv/
+env/
+ENV/
+
+# Bytecode y compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Pruebas y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Almacenamiento temporal de descargas de inventarios
+storage/temp/*
+!storage/temp/.gitkeep
+
+# Base de datos local SQLite (ignorado para proteger credenciales y contraseñas)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+!data/.gitkeep
+
+# Logs y depuración
+*.log
+
+# Variables de entorno locales
+.env
+.env.local
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

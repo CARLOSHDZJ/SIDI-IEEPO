@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ config.get('subtitulo_sistema', 'SIDI | IEEPO') }}{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Variables dinámicas de Branding desde la Base de Datos -->
+    <style>
+        :root {
+            --primary: {{ config.get('color_primario', '#8B1D42') }};
+            --secondary: {{ config.get('color_secundario', '#B28834') }};
+            --bg-neutral: {{ config.get('color_fondo', '#F8FAFC') }};
+        }
+        .bg-primary { background-color: var(--primary) !important; }
+        .text-primary { color: var(--primary) !important; }
+        .border-primary { border-color: var(--primary) !important; }
+        .focus-ring-primary:focus {
+            --tw-ring-color: var(--primary) !important;
+            border-color: var(--primary) !important;
+        }
+
+        .bg-secondary { background-color: var(--secondary) !important; }
+        .text-secondary { color: var(--secondary) !important; }
+        .border-secondary { border-color: var(--secondary) !important; }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #ffffff;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            filter: brightness(0.9);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: #ffffff;
+            transition: all 0.2s ease;
+        }
+        .btn-secondary:hover {
+            filter: brightness(0.95);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Barra de Navegación -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-24">
+                <!-- Logotipo e Identidad Dinámica -->
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="flex items-center space-x-3 py-2">
+                        <img src="{{ config.get('logo_url', '/static/uploads/logos/logo_default.svg') }}" 
+                             alt="Logotipo Institucional" 
+                             class="h-16 sm:h-20 w-auto object-contain hover:opacity-95 transition">
+                    </a>
+                </div>
+
+                <!-- Enlaces de navegación -->
+                <nav class="flex items-center space-x-2 sm:space-x-4">
+                    {% if is_admin %}
+                        <a href="/admin" class="px-3 py-2 text-sm font-medium text-slate-700 hover:text-primary transition flex items-center">
+                            <i class="fa-solid fa-chart-pie mr-1.5 text-primary"></i> Dashboard
+                        </a>
+                        <a href="/admin/solicitudes" class="px-3 py-2 text-sm font-medium text-slate-700 hover:text-primary transition flex items-center">
+                            <i class="fa-solid fa-folder-open mr-1.5 text-primary"></i> Solicitudes & Directorio
+                        </a>
+                        <a href="/admin/formatos" class="px-3 py-2 text-sm font-medium text-slate-700 hover:text-primary transition flex items-center">
+                            <i class="fa-solid fa-file-excel mr-1.5 text-primary"></i> Formatos
+                        </a>
+                        <a href="/admin/configuracion" class="px-3 py-2 text-sm font-medium text-slate-700 hover:text-primary transition flex items-center">
+                            <i class="fa-solid fa-sliders mr-1.5 text-primary"></i> Configuración
+                        </a>
+                        <a href="/admin/logout" class="ml-2 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition flex items-center">
+                            <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Salir
+                        </a>
+                    {% else %}
+                        <a href="/" class="px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary transition flex items-center">
+                            <i class="fa-solid fa-file-signature mr-2 text-primary"></i> Solicitar Inventario
+                        </a>
+                        <a href="/consulta" class="px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary transition flex items-center">
+                            <i class="fa-solid fa-magnifying-glass mr-2 text-primary"></i> Consultar Estatus
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Pie de página parametrizable con datos institucionales -->
+    <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 text-xs py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-2">
+                        {{ config.get('nombre_institucion', 'Departamento de Inventarios') }}
+                    </h4>
+                    <p class="text-slate-400 leading-relaxed">
+                        {{ config.get('subtitulo_sistema', 'Sistema de Despacho de Inventarios (SIDI)') }}
+                    </p>
+                    <p class="mt-2 text-slate-500">
+                        {{ config.get('oficina_departamento', 'Departamento de Control de Bienes Muebles e Inventarios') }}
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-2">Atención y Contacto</h4>
+                    <p class="flex items-center mb-1"><i class="fa-solid fa-phone mr-2 text-secondary"></i> {{ config.get('oficina_telefono', '') }}</p>
+                    <p class="flex items-center mb-1"><i class="fa-solid fa-envelope mr-2 text-secondary"></i> {{ config.get('oficina_correo', '') }}</p>
+                    <p class="flex items-center"><i class="fa-regular fa-clock mr-2 text-secondary"></i> {{ config.get('oficina_horario', '') }}</p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-2">Ubicación de Oficinas</h4>
+                    <p class="flex items-start">
+                        <i class="fa-solid fa-location-dot mr-2 mt-1 text-secondary"></i>
+                        <span>{{ config.get('oficina_direccion', '') }}</span>
+                    </p>
+                    <div class="mt-4 pt-4 border-t border-slate-800 text-slate-500">
+                        &copy; 2026 SIDI. Departamento de Inventarios.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+
+    {% if is_admin %}
+    <!-- Detector de Inactividad para Administradores (10 minutos) -->
+    <script>
+        (function() {
+            // 10 minutos = 600,000 milisegundos de inactividad máxima
+            const TIEMPO_MAX_INACTIVIDAD = 10 * 60 * 1000;
+            let temporizadorInactividad;
+
+            function restablecerInactividad() {
+                clearTimeout(temporizadorInactividad);
+                temporizadorInactividad = setTimeout(function() {
+                    // Redirigir al cierre seguro de sesión
+                    window.location.href = '/admin/logout?inactividad=1';
+                }, TIEMPO_MAX_INACTIVIDAD);
+            }
+
+            // Detectar interacción humana activa
+            const eventos = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+            eventos.forEach(function(ev) {
+                window.addEventListener(ev, restablecerInactividad, { passive: true });
+            });
+
+            restablecerInactividad();
+        })();
+    </script>
+    {% endif %}
+</body>
+</html>

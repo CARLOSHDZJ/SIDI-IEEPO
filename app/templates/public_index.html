@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitud de Inventario Escolar | SIDI - DEPARTAMENTO DE INVENTARIOS{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Hero / Banner Informativo -->
+    <div class="rounded-2xl p-8 mb-8 text-white shadow-lg relative overflow-hidden bg-gradient-to-r from-slate-900 to-slate-800 border-b-4 border-secondary">
+        <div class="relative z-10 max-w-3xl">
+            <span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-white/10 text-white backdrop-blur-md mb-3 border border-white/10 tracking-wide">
+                <i class="fa-solid fa-boxes-stacked mr-2 text-secondary"></i> DEPARTAMENTO DE INVENTARIOS
+            </span>
+            <h1 class="text-3xl sm:text-5xl font-black tracking-tight uppercase text-white">
+                VENTANILLA DIGITAL
+            </h1>
+            <p class="mt-3 text-base text-slate-300 leading-relaxed">
+                Obtén de forma oficial y automática la <strong>Constancia de Área Resguardante (Cédula Censal)</strong> de tu Centro de Trabajo, acompañada de los formatos normativos vigentes (Alta de Bienes, Baja de Bienes e Instructivos).
+            </p>
+        </div>
+    </div>
+
+    <!-- Alertas: Notificación Anti-Saturación / Éxito / Error -->
+    {% if aviso_antisaturacion %}
+    <div class="mb-8 p-5 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 shadow-sm flex items-start space-x-4">
+        <div class="flex-shrink-0 text-amber-600 text-2xl mt-0.5">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="flex-1">
+            <h3 class="text-base font-bold text-amber-950">Solicitud en curso detectada (Control Anti-Saturación)</h3>
+            <p class="text-sm mt-1 text-amber-800">
+                La Clave de Centro de Trabajo <strong>{{ aviso_antisaturacion.cct }}</strong> ya cuenta con una solicitud activa registrada el <strong>{{ aviso_antisaturacion.fecha_solicitud }}</strong> con número de folio:
+            </p>
+            <div class="mt-2 inline-flex items-center px-3 py-1.5 bg-amber-200/70 text-amber-950 font-mono font-bold text-sm rounded-md border border-amber-300">
+                <i class="fa-solid fa-ticket mr-2"></i> {{ aviso_antisaturacion.folio }}
+            </div>
+            <p class="text-xs text-amber-700 mt-2">
+                Para evitar saturación en el servidor central, su solicitud se encuentra en turno en la cola de procesamiento. En breve recibirá la documentación en su correo electrónico.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if mensaje_exito %}
+    <div class="mb-8 p-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 shadow-sm flex items-start space-x-4">
+        <div class="flex-shrink-0 text-emerald-600 text-3xl">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="flex-1">
+            <h3 class="text-lg font-bold text-emerald-950">¡Solicitud Registrada con Éxito!</h3>
+            <p class="text-sm mt-1 text-emerald-800">
+                Hemos recibido su petición para la CCT <strong>{{ nuevo_folio_cct }}</strong>. Su solicitud ha sido encolada con el siguiente folio oficial:
+            </p>
+            <div class="mt-3 inline-flex items-center px-4 py-2 bg-emerald-200/80 text-emerald-950 font-mono font-bold text-base rounded-md border border-emerald-300">
+                <i class="fa-solid fa-file-shield mr-2"></i> {{ nuevo_folio }}
+            </div>
+            <p class="text-sm text-emerald-800 mt-2">
+                El motor de extracción del SIDI está procesando su inventario. Recibirá en su correo electrónico (<strong>{{ nuevo_correo }}</strong>) la constancia oficial y los formatos adjuntos.
+            </p>
+            <div class="mt-4">
+                <a href="/consulta?folio={{ nuevo_folio }}" class="inline-flex items-center text-xs font-bold text-emerald-900 underline hover:text-emerald-700">
+                    <i class="fa-solid fa-arrow-right mr-1"></i> Rastrear estado de este folio
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if error_msg %}
+    <div class="mb-8 p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 shadow-sm flex items-center space-x-3">
+        <i class="fa-solid fa-circle-exclamation text-xl text-red-600"></i>
+        <div class="text-sm font-medium">{{ error_msg }}</div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Formulario Principal (2 columnas en LG) -->
+        <div class="lg:col-span-2 bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200">
+            <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-100">
+                <div class="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-school"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Formulario Oficial de Solicitud</h2>
+                    <p class="text-xs text-slate-500">Ingrese los datos exactos del Centro de Trabajo y del solicitante</p>
+                </div>
+            </div>
+
+            <form action="/solicitar" method="POST" class="space-y-6">
+                <!-- CCT con validación visual y regex -->
+                <div>
+                    <label for="cct" class="block text-sm font-semibold text-slate-700 mb-1">
+                        Clave de Centro de Trabajo (CCT) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" id="cct" name="cct" required maxlength="10"
+                               placeholder="Ej: 20DPR0005E"
+                               value="{{ form_data.cct if form_data else '' }}"
+                               style="text-transform: uppercase;"
+                               class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary font-mono text-base tracking-wider uppercase font-bold text-slate-900 placeholder:font-normal placeholder:tracking-normal placeholder:capitalize">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-barcode"></i>
+                        </div>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Formato oficial de 10 caracteres alfanuméricos (ej: <strong>20DPR1234A</strong> para Oaxaca).
+                    </p>
+                </div>
+
+                <!-- Nombre y Cargo -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="nombre_solicitante" class="block text-sm font-semibold text-slate-700 mb-1">
+                            Nombre Completo <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="nombre_solicitante" name="nombre_solicitante" required
+                               placeholder="Nombre(s) y Apellidos"
+                               value="{{ form_data.nombre_solicitante if form_data else '' }}"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-sm text-slate-800">
+                    </div>
+                    <div>
+                        <label for="cargo" class="block text-sm font-semibold text-slate-700 mb-1">
+                            Cargo / Función <span class="text-red-500">*</span>
+                        </label>
+                        <select id="cargo" name="cargo" required
+                                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-sm text-slate-800">
+                            <option value="">-- Seleccione su cargo --</option>
+                            <option value="Director(a) Técnico(a)">Director(a) Técnico(a)</option>
+                            <option value="Director(a) Comisionado(a)">Director(a) Comisionado(a)</option>
+                            <option value="Responsable de Inventarios">Responsable de Inventarios</option>
+                            <option value="Subdirector(a) de Gestión">Subdirector(a) de Gestión</option>
+                            <option value="Supervisor(a) Escolar">Supervisor(a) Escolar</option>
+                            <option value="Jefe(a) de Sector">Jefe(a) de Sector</option>
+                            <option value="Docente con Función Directiva">Docente con Función Directiva</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Teléfono y Correo Electrónico -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="telefono" class="block text-sm font-semibold text-slate-700 mb-1">
+                            Teléfono / WhatsApp <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="tel" id="telefono" name="telefono" required maxlength="15"
+                                   placeholder="Ej: 9510000001"
+                                   value="{{ form_data.telefono if form_data else '' }}"
+                                   class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-sm text-slate-800">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-phone"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="correo" class="block text-sm font-semibold text-slate-700 mb-1">
+                            Correo Electrónico Oficial <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="email" id="correo" name="correo" required
+                                   placeholder="director.plantel@ejemplo.gob.mx"
+                                   value="{{ form_data.correo if form_data else '' }}"
+                                   class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-sm text-slate-800">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-envelope"></i>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">Aquí se enviará la constancia y los formatos oficiales.</p>
+                    </div>
+                </div>
+
+                <!-- Región y Nivel Educativo -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="region" class="block text-sm font-semibold text-slate-700 mb-1">
+                            Región del Estado <span class="text-red-500">*</span>
+                        </label>
+                        <select id="region" name="region" required
+                                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-sm text-slate-800">
+                            <option value="">-- Seleccione la región --</option>
+                            <option value="Valles Centrales">Valles Centrales</option>
+                            <option value="Istmo">Istmo</option>
+                            <option value="Costa">Costa</option>
+                            <option value="Mixteca">Mixteca</option>
+                            <option value="Papaloapan">Papaloapan</option>
+                            <option value="Cañada">Cañada</option>
+                            <option value="Sierra de Juárez (Norte)">Sierra de Juárez (Norte)</option>
+                            <option value="Sierra Sur">Sierra Sur</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="nivel_educativo" class="block text-sm font-semibold text-slate-700 mb-1">
+                            Nivel Educativo <span class="text-red-500">*</span>
+                        </label>
+                        <select id="nivel_educativo" name="nivel_educativo" required
+                                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-sm text-slate-800">
+                            <option value="">-- Seleccione nivel educativo --</option>
+                            <option value="Educación Inicial">Educación Inicial</option>
+                            <option value="Preescolar General">Preescolar General</option>
+                            <option value="Preescolar Indígena">Preescolar Indígena</option>
+                            <option value="Primaria General">Primaria General</option>
+                            <option value="Primaria Indígena">Primaria Indígena</option>
+                            <option value="Secundaria General">Secundaria General</option>
+                            <option value="Secundaria Técnica">Secundaria Técnica</option>
+                            <option value="Telesecundaria">Telesecundaria</option>
+                            <option value="Educación Especial">Educación Especial</option>
+                            <option value="Educación Física / Extraescolar">Educación Física / Extraescolar</option>
+                            <option value="Misiones Culturales">Misiones Culturales</option>
+                            <option value="Centro de Maestros">Centro de Maestros</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Botón de Envío -->
+                <div class="pt-4">
+                    <button type="submit" class="w-full btn-primary py-3 px-6 rounded-xl font-bold text-base flex items-center justify-center space-x-2 shadow-md">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>Generar y Despachar Inventario Oficial</span>
+                    </button>
+                    <p class="text-center text-xs text-slate-400 mt-2">
+                        Al enviar esta solicitud se verificará su estatus en el padrón central y se enviará la cédula correspondiente.
+                    </p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Columna Lateral: Formatos Oficiales Descargables & Ayuda (1 columna en LG) -->
+        <div class="space-y-6">
+            <!-- Tarjeta de Formatos Oficiales Activos -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center space-x-2.5 mb-4 pb-3 border-b border-slate-100">
+                    <i class="fa-solid fa-file-circle-check text-primary text-lg"></i>
+                    <h3 class="font-bold text-slate-800 text-base">Formatos Oficiales Vigentes</h3>
+                </div>
+                <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+                    Los formatos normativos oficiales se <strong>adjuntan y entregan automáticamente en su correo electrónico</strong> al completar el registro de su Centro de Trabajo:
+                </p>
+                
+                <div class="space-y-3">
+                    {% for formato in formatos_activos %}
+                    <div class="p-3 rounded-lg border border-slate-100 bg-slate-50 flex items-center justify-between">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            {% if formato.tipo == 'EXCEL' %}
+                                <i class="fa-solid fa-file-excel text-emerald-600 text-xl flex-shrink-0"></i>
+                            {% else %}
+                                <i class="fa-solid fa-file-pdf text-red-600 text-xl flex-shrink-0"></i>
+                            {% endif %}
+                            <div class="truncate">
+                                <p class="text-xs font-semibold text-slate-800 truncate" title="{{ formato.nombre }}">{{ formato.nombre }}</p>
+                                <span class="text-[10px] text-slate-400 font-mono">{{ formato.codigo }}</span>
+                            </div>
+                        </div>
+                        <span class="flex-shrink-0 ml-2 px-2.5 py-1 bg-slate-200/80 text-slate-600 rounded text-[10px] font-bold flex items-center" title="Requiere completar el registro oficial para recibirlo">
+                            <i class="fa-solid fa-lock text-slate-400 mr-1.5"></i> Con Registro
+                        </span>
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-slate-400 italic">No hay formatos adicionales cargados en el sistema.</p>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+                    <a href="#cct" onclick="document.getElementById('cct').focus()" class="text-xs font-bold text-primary hover:underline inline-flex items-center space-x-1">
+                        <span>Llenar registro oficial para recibirlos &rarr;</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tarjeta de Rastreador Rápido -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center space-x-2.5 mb-4 pb-3 border-b border-slate-100">
+                    <i class="fa-solid fa-magnifying-glass text-secondary text-lg"></i>
+                    <h3 class="font-bold text-slate-800 text-base">¿Ya tiene un folio?</h3>
+                </div>
+                <p class="text-xs text-slate-600 mb-4">
+                    Verifique en tiempo real si su constancia fue emitida o si se encuentra en turno de procesamiento.
+                </p>
+                <form action="/consulta" method="GET" class="flex space-x-2">
+                    <input type="text" name="folio" placeholder="Folio o CCT" required
+                           class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary uppercase font-mono">
+                    <button type="submit" class="btn-secondary px-3 py-2 rounded-lg text-xs font-bold flex-shrink-0">
+                        Consultar
+                    </button>
+                </form>
+            </div>
+
+            <!-- Soporte y Mesa de Ayuda -->
+            <div class="bg-slate-100/70 rounded-2xl p-5 border border-slate-200 text-xs text-slate-600">
+                <h4 class="font-bold text-slate-800 mb-1.5 flex items-center">
+                    <i class="fa-solid fa-headset mr-2 text-primary"></i> Mesa de Asistencia
+                </h4>
+                <p class="mb-2">Si desconoce su CCT oficial o tiene problemas para generar su inventario, contáctenos:</p>
+                <p class="font-semibold text-slate-700"><i class="fa-solid fa-phone mr-1 text-slate-400"></i> {{ config.get('oficina_telefono', '') }}</p>
+                <p class="font-semibold text-slate-700 mt-1"><i class="fa-solid fa-envelope mr-1 text-slate-400"></i> {{ config.get('oficina_correo', '') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

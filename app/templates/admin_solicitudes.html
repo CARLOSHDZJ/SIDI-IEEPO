@@ -1,0 +1,848 @@
+{% extends "base.html" %}
+
+{% block title %}Directorio Vivo y Bitácora de Solicitudes | SIDI{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200 gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">Directorio Vivo y Bitácora Oficial</h1>
+            <p class="text-xs text-slate-500 mt-1">Padrón dinámico de directivos y gestión de despachos de inventario</p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button type="button" onclick="abrirModalMasivo()" class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-opacity-90 transition shadow-sm cursor-pointer">
+                <i class="fa-solid fa-layer-group mr-1.5"></i> Despacho a Supervisión / Carga Masiva
+            </button>
+            <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                <i class="fa-solid fa-users mr-1.5 text-primary"></i> {{ total_solicitudes }} Registros en Padrón
+            </span>
+            {% if total_solicitudes > 0 %}
+            <form action="/admin/solicitudes/limpiar-todo" method="POST" onsubmit="return confirm('⚠️ ATENCIÓN: ¿Está seguro de que desea eliminar TODAS las solicitudes de prueba?\n\nEsta acción borrará todos los registros y reiniciará el contador para que el siguiente folio sea SIDI-2026-0001.');">
+                <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition shadow-sm" title="Vaciar todos los registros de prueba y reiniciar folios">
+                    <i class="fa-solid fa-trash-can mr-1.5 text-rose-500"></i> Limpiar Registros de Prueba
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if masivo %}
+    <div class="mt-6 p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-purple-600 text-base"></i>
+            <span>
+                <strong>¡Carga Masiva Exitosa!</strong> Se encolaron <strong>{{ total_masivo }} escuelas</strong> para la supervisión <strong>{{ zona_masivo }}</strong>. El Worker las está extrayendo y despachando de forma ordenada y pausada.
+            </span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <a href="/admin/supervision/reporte?zona={{ zona_masivo }}" class="inline-flex items-center px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-sm transition">
+                <i class="fa-solid fa-file-excel mr-1.5"></i> Descargar Acuse Oficial
+            </a>
+            <a href="/admin/solicitudes" class="text-purple-700 hover:text-purple-900 font-bold px-2 py-1">&times;</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get('limpiado') %}
+    <div class="mt-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <span><strong>¡Registros limpiados exitosamente!</strong> La base de datos está como nueva y el próximo folio comenzará desde <strong>0001</strong>.</span>
+        </div>
+        <a href="/admin/solicitudes" class="text-emerald-700 hover:text-emerald-900 font-bold">&times;</a>
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get('aprobado') %}
+    <div class="mt-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <span><strong>¡Solicitud validada exitosamente!</strong> Se ha omitido el código OTP y la solicitud fue enviada a la cola para su despacho y extracción inmediata.</span>
+        </div>
+        <a href="/admin/solicitudes" class="text-emerald-700 hover:text-emerald-900 font-bold">&times;</a>
+    </div>
+    {% endif %}
+
+    <!-- Barra de Búsqueda y Filtros -->
+    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 my-6">
+        <form method="GET" action="/admin/solicitudes" class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-grow">
+                <input type="text" name="q" value="{{ query if query else '' }}" 
+                       placeholder="Buscar por CCT, Folio, Nombre del Director, Correo o Teléfono..." 
+                       class="w-full pl-10 pr-4 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+            </div>
+
+            <select name="estado" class="px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary">
+                <option value="">Todos los Estados</option>
+                <option value="ENVIADO" {% if estado_filtro == 'ENVIADO' %}selected{% endif %}>Enviados</option>
+                <option value="CCT_NO_ENCONTRADA" {% if estado_filtro == 'CCT_NO_ENCONTRADA' %}selected{% endif %}>CCT No Encontrada</option>
+                <option value="PENDIENTE_VERIFICACION" {% if estado_filtro == 'PENDIENTE_VERIFICACION' %}selected{% endif %}>Esperando OTP</option>
+                <option value="PENDIENTE" {% if estado_filtro == 'PENDIENTE' %}selected{% endif %}>Pendientes</option>
+                <option value="PROCESANDO" {% if estado_filtro == 'PROCESANDO' %}selected{% endif %}>En Proceso</option>
+                <option value="ERROR_PORTAL" {% if estado_filtro == 'ERROR_PORTAL' %}selected{% endif %}>Error en Portal</option>
+            </select>
+
+            <button type="submit" class="btn-primary px-5 py-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5">
+                <i class="fa-solid fa-filter"></i>
+                <span>Buscar</span>
+            </button>
+
+            {% if query or estado_filtro %}
+            <a href="/admin/solicitudes" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition flex items-center justify-center">
+                Limpiar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tabla del Padrón y Solicitudes -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-600">
+                <thead class="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
+                    <tr>
+                        <th class="px-4 py-3.5">Folio / CCT</th>
+                        <th class="px-4 py-3.5">Directivo / Cargo</th>
+                        <th class="px-4 py-3.5">Contacto (Email / Tel)</th>
+                        <th class="px-4 py-3.5">Región y Nivel</th>
+                        <th class="px-4 py-3.5">Fecha</th>
+                        <th class="px-4 py-3.5">Estado</th>
+                        <th class="px-4 py-3.5 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for sol in solicitudes %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <!-- Folio / CCT -->
+                        <td class="px-4 py-3.5">
+                            <div class="font-mono font-bold text-slate-900">{{ sol.folio }}</div>
+                            <span class="inline-block mt-0.5 font-mono font-bold text-primary px-1.5 py-0.5 bg-rose-50 border border-rose-200 rounded text-[11px]">{{ sol.cct }}</span>
+                        </td>
+
+                        <!-- Directivo -->
+                        <td class="px-4 py-3.5">
+                            <div class="font-bold text-slate-800 text-sm">{{ sol.nombre_solicitante }}</div>
+                            <div class="text-[11px] text-slate-500">{{ sol.cargo }}</div>
+                            {% if sol.mensaje_error and '[SUPERVISION:' in sol.mensaje_error %}
+                                <span class="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                    <i class="fa-solid fa-layer-group mr-1 text-[8px]"></i> Supervisión
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Contacto -->
+                        <td class="px-4 py-3.5 font-mono text-[11px]">
+                            <div class="text-slate-700"><i class="fa-solid fa-envelope mr-1 text-slate-400"></i> {{ sol.correo }}</div>
+                            <div class="text-slate-500 mt-0.5"><i class="fa-solid fa-phone mr-1 text-slate-400"></i> {{ sol.telefono }}</div>
+                        </td>
+
+                        <!-- Región / Nivel -->
+                        <td class="px-4 py-3.5">
+                            <div class="font-semibold text-slate-700">{{ sol.region }}</div>
+                            <div class="text-[11px] text-slate-400">{{ sol.nivel_educativo }}</div>
+                        </td>
+
+                        <!-- Fecha -->
+                        <td class="px-4 py-3.5 text-slate-400">
+                            <div>{{ sol.fecha_solicitud.strftime('%d/%m/%Y') }}</div>
+                            <div class="text-[10px]">{{ sol.fecha_solicitud.strftime('%H:%M:%S') }}</div>
+                        </td>
+
+                        <!-- Estado -->
+                        <td class="px-4 py-3.5">
+                            {% if sol.estado == 'ENVIADO' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    <i class="fa-solid fa-circle-check mr-1"></i> ENVIADO
+                                </span>
+                            {% elif sol.estado == 'CCT_NO_ENCONTRADA' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+                                    <i class="fa-solid fa-circle-question mr-1"></i> NO REGISTRADA
+                                </span>
+                            {% elif sol.estado == 'PENDIENTE_VERIFICACION' %}
+                                <div class="space-y-1">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200" title="Pendiente de confirmación de código OTP">
+                                        <i class="fa-solid fa-key mr-1"></i> ESPERANDO OTP
+                                    </span>
+                                    {% if sol.codigo_otp %}
+                                    <div>
+                                        <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200" title="Código OTP generado para esta solicitud">
+                                            OTP: {{ sol.codigo_otp }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% elif sol.estado == 'PENDIENTE' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                    <i class="fa-solid fa-clock mr-1"></i> EN COLA
+                                </span>
+                            {% elif sol.estado == 'PROCESANDO' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
+                                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> PROCESANDO
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title="{{ sol.mensaje_error }}">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> ERROR ({{ sol.reintentos }}/3)
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Acciones -->
+                        <td class="px-4 py-3.5 text-center">
+                            <div class="flex items-center justify-center space-x-1">
+                                {% if sol.estado == 'PENDIENTE_VERIFICACION' %}
+                                <form action="/admin/solicitud/{{ sol.id }}/aprobar-otp" method="POST" onsubmit="return confirm('¿Desea validar manualmente y despachar la solicitud para la CCT {{ sol.cct }} sin requerir el código OTP?');">
+                                    <button type="submit" class="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition border border-emerald-300 bg-emerald-50/70" title="Aprobar sin OTP y Despachar Inmediatamente">
+                                        <i class="fa-solid fa-user-check"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <form action="/admin/solicitud/{{ sol.id }}/reenviar" method="POST" onsubmit="return confirm('¿Desea volver a encolar y reintentar el despacho para la CCT {{ sol.cct }}?');">
+                                    <button type="submit" class="p-1.5 text-slate-500 hover:text-primary hover:bg-slate-100 rounded-lg transition" title="Forzar Reenvío / Reintentar">
+                                        <i class="fa-solid fa-rotate-right"></i>
+                                    </button>
+                                </form>
+                                <form action="/admin/solicitud/{{ sol.id }}/eliminar" method="POST" onsubmit="return confirm('¿Desea eliminar la solicitud {{ sol.folio }} de la CCT {{ sol.cct }}?');">
+                                    <button type="submit" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Eliminar registro">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-10 text-slate-400 italic">
+                            No se encontraron directores o solicitudes coincidentes con los criterios de búsqueda.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal de Carga Masiva y Supervisión Escolar -->
+<div id="modalMasivo" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- Backdrop oscuro con desenfoque -->
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="cerrarModalMasivo()"></div>
+
+    <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+        <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-3xl border border-slate-200">
+            
+            <!-- Encabezado del Modal -->
+            <div class="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/30 flex items-center justify-center border border-white/10 text-rose-300">
+                        <i class="fa-solid fa-layer-group text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold tracking-tight" id="modal-title">Despacho a Supervisión y Carga Masiva</h3>
+                        <p class="text-xs text-slate-300">Encolamiento sin OTP de hasta 50 escuelas para supervisiones o jefaturas</p>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarModalMasivo()" class="text-slate-400 hover:text-white transition text-xl font-bold px-2 py-1">&times;</button>
+            </div>
+
+            <!-- Formulario Masivo -->
+            <form action="/admin/solicitudes/masivo" method="POST" enctype="multipart/form-data" id="formMasivo" onsubmit="prepararEnvioMasivo(event)" class="p-6 space-y-6">
+                <input type="hidden" name="directores_json" id="directores_json" value="">
+
+                <!-- Banner de recuperación de borrador -->
+                <div id="bannerBorrador" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-floppy-disk text-amber-600 text-base"></i>
+                        <span><strong>Borrador recuperado:</strong> Se restauraron las claves e información que estabas capturando antes de cerrar sesión.</span>
+                    </div>
+                    <button type="button" onclick="limpiarBorradorMasivo()" class="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold rounded-lg text-[11px] transition self-start sm:self-auto">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Descartar y empezar de cero
+                    </button>
+                </div>
+
+                <!-- Sección 1: Datos de la Supervisión / Solicitante -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-user-tie mr-1.5 text-primary"></i> 1. Datos de la Supervisión / Solicitante
+                        </h4>
+                        <span id="badgeGuardado" class="text-[10px] text-emerald-600 font-medium hidden">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Borrador guardado
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Nombre del Supervisor(a) o Comisionado(a) *</label>
+                            <input type="text" name="nombre_supervisor" id="nombre_supervisor" required placeholder="Ej. Juan Pérez Hernández" oninput="guardarBorradorMasivo()"
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Zona Escolar o Sector (Identificador) *</label>
+                            <input type="text" name="zona_escolar" id="zona_escolar" placeholder="Ej. 049" oninput="guardarBorradorMasivo()"
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Clave CCT de la Supervisión (Opcional)</label>
+                            <input type="text" name="cct_supervision" id="cct_supervision" maxlength="10" placeholder="Ej. 20FZP0001A" oninput="guardarBorradorMasivo()"
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none uppercase font-mono">
+                            <label class="inline-flex items-center mt-1.5 text-[11px] text-slate-600 cursor-pointer">
+                                <input type="checkbox" name="incluir_cct_supervision" id="incluir_cct_supervision" value="true" checked onchange="guardarBorradorMasivo()" class="rounded text-primary focus:ring-primary mr-1.5">
+                                <span>Despachar también el inventario de la oficina de Supervisión</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Cargo Oficial *</label>
+                            <select name="cargo_solicitante" id="cargo_solicitante" onchange="guardarBorradorMasivo()" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none">
+                                <option value="Supervisor(a) Escolar" selected>Supervisor(a) Escolar</option>
+                                <option value="Jefe(a) de Sector">Jefe(a) de Sector</option>
+                                <option value="Auxiliar de Supervisión">Auxiliar de Supervisión</option>
+                                <option value="Director(a) Comisionado(a)">Director(a) Comisionado(a)</option>
+                                <option value="Director(a) Técnico(a)">Director(a) Técnico(a)</option>
+                                <option value="Responsable de Inventarios">Responsable de Inventarios</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Teléfono de Contacto (10 dígitos) *</label>
+                            <input type="tel" name="telefono_contacto" id="telefono_contacto" required maxlength="10" placeholder="Ej. 9510000000" oninput="guardarBorradorMasivo()"
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Correo Electrónico de la Supervisión *</label>
+                            <input type="email" name="correo_supervision" id="correo_supervision" required placeholder="Ej. supervision.escolar@ejemplo.gob.mx" oninput="guardarBorradorMasivo()"
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none font-mono">
+                            <span class="text-[10px] text-slate-400">Correo oficial donde se concentrarán los expedientes.</span>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Región del IEEPO *</label>
+                            <select name="region" id="region" onchange="guardarBorradorMasivo()" required class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none">
+                                {% for r in catalogo_regiones %}
+                                <option value="{{ r }}">{{ r }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Nivel Educativo *</label>
+                            <select name="nivel_educativo" id="nivel_educativo" onchange="guardarBorradorMasivo()" required class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none">
+                                {% for n in catalogo_niveles %}
+                                <option value="{{ n }}">{{ n }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Modo de Envío de Inventarios -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center">
+                        <i class="fa-solid fa-paper-plane mr-1.5 text-primary"></i> 2. Destinatario de los Inventarios y Formatos
+                    </h4>
+                    <p class="text-[11px] text-slate-500 mb-3">
+                        Garantía de privacidad: Ningún inventario se enviará a directores de ciclos escolares pasados. Seleccione cómo se despacharán:
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <label class="relative flex flex-col p-3 rounded-xl border-2 border-primary bg-rose-50/40 cursor-pointer hover:bg-rose-50 transition" id="cardModoSupervision">
+                            <div class="flex items-center space-x-2">
+                                <input type="radio" name="modo_envio" id="radioModoSupervision" value="supervision" checked onchange="cambiarModoEnvio('supervision'); guardarBorradorMasivo();" class="text-primary focus:ring-primary">
+                                <span class="font-bold text-slate-900">Solo a Supervisión</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                                <strong>Recomendado.</strong> Si NO tienes los correos de los directores, todos los inventarios van al correo del supervisor para su reparto.
+                            </p>
+                        </label>
+
+                        <label class="relative flex flex-col p-3 rounded-xl border-2 border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition" id="cardModoDirectores">
+                            <div class="flex items-center space-x-2">
+                                <input type="radio" name="modo_envio" id="radioModoDirectores" value="directores" onchange="cambiarModoEnvio('directores'); guardarBorradorMasivo();" class="text-primary focus:ring-primary">
+                                <span class="font-bold text-slate-900">A cada Director</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                                Se envía a cada director del ciclo actual según los correos capturados abajo o en archivo Excel.
+                            </p>
+                        </label>
+
+                        <label class="relative flex flex-col p-3 rounded-xl border-2 border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition" id="cardModoDirectoresCC">
+                            <div class="flex items-center space-x-2">
+                                <input type="radio" name="modo_envio" id="radioModoDirectoresCC" value="directores_cc_supervision" onchange="cambiarModoEnvio('directores_cc_supervision'); guardarBorradorMasivo();" class="text-primary focus:ring-primary">
+                                <span class="font-bold text-slate-900">Directores con CC</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                                Cada director recibe su escuela y la supervisión recibe copia simultánea de cada envío como acuse (formatos 1 sola vez).
+                            </p>
+                        </label>
+                    </div>
+
+                    <!-- Mensaje orientador según modo -->
+                    <div id="avisoModoSupervision" class="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+                        <span><strong>Modo directo activo:</strong> Solo necesitas pegar las CCTs abajo. Todas las constancias se enviarán al correo de la supervisión.</span>
+                    </div>
+
+                    <div id="avisoModoDirectores" class="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-[11px] hidden flex items-center gap-2">
+                        <i class="fa-solid fa-info-circle text-blue-600 text-sm"></i>
+                        <span><strong>Directorio dinámico activado:</strong> Puedes capturar los correos de los directores en la tabla que aparecerá abajo. Las escuelas que dejes vacías se enviarán a la supervisión como respaldo.</span>
+                    </div>
+                </div>
+
+                <!-- Sección 3: CCTs (Área de texto o Excel) -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                            <i class="fa-solid fa-school mr-1.5 text-primary"></i> 3. Claves de Centro de Trabajo (Hasta 50 CCTs) *
+                        </label>
+                        <span class="text-[11px] text-slate-400">Pegue una clave por renglón</span>
+                    </div>
+
+                    <textarea name="ccts_texto" id="ccts_texto" rows="6" oninput="analizarCCTs(); guardarBorradorMasivo();"
+                              placeholder="Pegue aquí la lista de claves CCT (una por renglón)...&#10;Ejemplo:&#10;20DJN0001A&#10;20DJN0002B"
+                              class="w-full p-3 font-mono text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-primary focus:outline-none uppercase"></textarea>
+
+                    <!-- Barra de Analizador en Tiempo Real -->
+                    <div class="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                        <span id="badgeValidas" class="px-2.5 py-1 rounded-md font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            0 CCTs válidas
+                        </span>
+                        <span id="badgeDuplicadas" class="px-2.5 py-1 rounded-md font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            0 duplicadas omitidas
+                        </span>
+                        <span id="badgeInvalidas" class="px-2.5 py-1 rounded-md font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            0 formato incorrecto
+                        </span>
+                    </div>
+                    <div id="listaInvalidas" class="mt-1 text-[11px] text-rose-600 font-medium hidden"></div>
+
+                    <!-- Tabla Interactiva para Datos de Directores (Visible solo en modo directores) -->
+                    <div id="contenedorTablaDirectores" class="hidden mt-4 pt-4 border-t border-slate-200">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                            <div>
+                                <h5 class="text-xs font-bold text-slate-800 flex items-center">
+                                    <i class="fa-solid fa-table-list mr-1.5 text-primary"></i> Datos de Directores del Ciclo Actual
+                                </h5>
+                                <p class="text-[10px] text-slate-500">Capture los correos que tenga disponibles. Las filas sin correo se enviarán a la supervisión.</p>
+                            </div>
+                            <button type="button" onclick="descargarPlantillaExcel()"
+                                    title="Descargar esta lista en Excel para llenarla cómodamente"
+                                    class="inline-flex items-center px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold text-[11px] transition shadow-xs shrink-0">
+                                <i class="fa-solid fa-file-excel mr-1 text-emerald-600"></i> Descargar en Excel (.xlsx)
+                            </button>
+                        </div>
+
+                        <div class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-inner">
+                            <table class="w-full text-left text-[11px] divide-y divide-slate-100">
+                                <thead class="bg-slate-100 text-slate-700 sticky top-0 font-bold">
+                                    <tr>
+                                        <th class="px-3 py-2 w-12 text-center">#</th>
+                                        <th class="px-3 py-2 w-32">CCT</th>
+                                        <th class="px-3 py-2">Correo del Director</th>
+                                        <th class="px-3 py-2">Nombre Director (Opcional)</th>
+                                        <th class="px-3 py-2 w-32">Teléfono</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuerpoTablaDirectores" class="divide-y divide-slate-100 font-sans">
+                                    <tr>
+                                        <td colspan="5" class="px-3 py-4 text-center text-slate-400 italic">
+                                            Pegue las CCTs arriba para generar las filas de captura de directores.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Opción alterna: Subir o Descargar archivo Excel / CSV -->
+                    <div class="mt-4 p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <div class="font-bold text-xs text-emerald-950 flex items-center">
+                                    <i class="fa-solid fa-file-excel mr-1.5 text-emerald-600 text-base"></i> 
+                                    ¿Prefiere importar desde un archivo Excel o CSV?
+                                </div>
+                                <p class="text-[11px] text-emerald-800 mt-0.5">
+                                    Descargue nuestra plantilla preformateada, llene los datos en su computadora y cárguela aquí con un clic.
+                                </p>
+                            </div>
+                            <button type="button" onclick="descargarPlantillaExcel()"
+                                    title="Descargar archivo Excel oficial con encabezados y CCTs"
+                                    class="inline-flex items-center justify-center px-3.5 py-2 rounded-xl border border-emerald-400 bg-white text-emerald-800 hover:bg-emerald-100 font-bold text-xs transition shadow-sm shrink-0">
+                                <i class="fa-solid fa-download mr-1.5 text-emerald-600 text-sm"></i>
+                                <span id="textoBtnPlantilla">Descargar Plantilla Excel (.xlsx)</span>
+                            </button>
+                        </div>
+
+                        <div class="mt-3 pt-2.5 border-t border-emerald-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <span class="text-[11px] font-semibold text-slate-700 flex items-center">
+                                <i class="fa-solid fa-arrow-up-from-bracket mr-1.5 text-emerald-600"></i> Cargar archivo completado:
+                            </span>
+                            <input type="file" name="archivo_excel" id="archivo_excel" accept=".xlsx, .xls, .csv" onchange="analizarArchivoExcel(this)"
+                                   class="text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer">
+                        </div>
+
+                        <!-- Indicador de archivo seleccionado -->
+                        <div id="badgeArchivoListo" class="hidden mt-2 p-2 bg-white border border-emerald-300 rounded-lg text-xs text-emerald-800 font-medium flex items-center justify-between shadow-xs">
+                            <span id="textoArchivoListo" class="flex items-center">
+                                <i class="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i> Archivo cargado
+                            </span>
+                            <button type="button" onclick="quitarArchivoExcel()" class="text-rose-600 hover:text-rose-800 text-[11px] font-bold ml-2">
+                                <i class="fa-solid fa-xmark mr-0.5"></i> Quitar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer del Modal -->
+                <div class="pt-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="text-[11px] text-slate-400">
+                        <i class="fa-solid fa-shield-halved mr-1 text-emerald-600"></i> Sesión protegida (2 hrs) y borrador guardado en tiempo real.
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button type="button" onclick="cerrarModalMasivo()" 
+                                class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition">
+                            Cerrar
+                        </button>
+                        <button type="submit" id="btnSubmitMasivo" disabled
+                                class="px-5 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-md hover:bg-opacity-95 transition opacity-50 cursor-not-allowed inline-flex items-center">
+                            <i class="fa-solid fa-bolt mr-1.5"></i> Iniciar Despacho en Cola
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Mantener sesión viva cada 60 segundos
+setInterval(function() {
+    fetch('/admin/ping').catch(() => {});
+}, 60000);
+
+let cctsValidasGlobal = [];
+
+function abrirModalMasivo() {
+    document.getElementById('modalMasivo').classList.remove('hidden');
+    restaurarBorradorMasivo();
+    analizarCCTs();
+    fetch('/admin/ping').catch(() => {});
+}
+
+function cerrarModalMasivo() {
+    document.getElementById('modalMasivo').classList.add('hidden');
+}
+
+function cambiarModoEnvio(modo) {
+    const cardSup = document.getElementById('cardModoSupervision');
+    const cardDir = document.getElementById('cardModoDirectores');
+    const cardDirCC = document.getElementById('cardModoDirectoresCC');
+    const avisoSup = document.getElementById('avisoModoSupervision');
+    const avisoDir = document.getElementById('avisoModoDirectores');
+    const contenedorTabla = document.getElementById('contenedorTablaDirectores');
+
+    [cardSup, cardDir, cardDirCC].forEach(c => {
+        c.classList.remove('border-primary', 'bg-rose-50/40');
+        c.classList.add('border-slate-200', 'bg-white');
+    });
+
+    if (modo === 'supervision') {
+        cardSup.classList.add('border-primary', 'bg-rose-50/40');
+        cardSup.classList.remove('border-slate-200', 'bg-white');
+        avisoSup.classList.remove('hidden');
+        avisoDir.classList.add('hidden');
+        contenedorTabla.classList.add('hidden');
+    } else {
+        if (modo === 'directores') {
+            cardDir.classList.add('border-primary', 'bg-rose-50/40');
+            cardDir.classList.remove('border-slate-200', 'bg-white');
+        } else {
+            cardDirCC.classList.add('border-primary', 'bg-rose-50/40');
+            cardDirCC.classList.remove('border-slate-200', 'bg-white');
+        }
+        avisoSup.classList.add('hidden');
+        avisoDir.classList.remove('hidden');
+        contenedorTabla.classList.remove('hidden');
+        renderizarTablaDirectores();
+    }
+}
+
+function analizarCCTs() {
+    const texto = document.getElementById('ccts_texto').value;
+    const lineas = texto.split('\n');
+    const cctRegex = /^[0-9]{2}[A-Za-z]{3}[0-9]{4}[A-Za-z]$/;
+
+    let validas = [];
+    let invalidas = [];
+    let duplicadas = 0;
+    let vistos = new Set();
+
+    lineas.forEach(linea => {
+        let lim = linea.trim();
+        if (!lim || lim.startsWith('#')) return;
+        let partes = lim.split(/[,;\t]+/);
+        let posibleCCT = partes[0].trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+        if (cctRegex.test(posibleCCT)) {
+            if (vistos.has(posibleCCT)) {
+                duplicadas++;
+            } else {
+                vistos.add(posibleCCT);
+                validas.push(posibleCCT);
+            }
+        } else {
+            invalidas.push(partes[0].trim());
+        }
+    });
+
+    cctsValidasGlobal = validas;
+
+    const badgeValidas = document.getElementById('badgeValidas');
+    const badgeDuplicadas = document.getElementById('badgeDuplicadas');
+    const badgeInvalidas = document.getElementById('badgeInvalidas');
+    const listaInvalidas = document.getElementById('listaInvalidas');
+    const btnSubmit = document.getElementById('btnSubmitMasivo');
+
+    badgeValidas.textContent = `${validas.length} CCTs válidas`;
+    badgeDuplicadas.textContent = `${duplicadas} duplicadas omitidas`;
+    badgeInvalidas.textContent = `${invalidas.length} formato incorrecto`;
+
+    if (invalidas.length > 0) {
+        listaInvalidas.classList.remove('hidden');
+        listaInvalidas.textContent = `Revise las siguientes claves: ${invalidas.slice(0, 5).join(', ')}${invalidas.length > 5 ? '...' : ''}`;
+    } else {
+        listaInvalidas.classList.add('hidden');
+    }
+
+    const fileInput = document.getElementById('archivo_excel');
+    const tieneArchivo = fileInput && fileInput.files && fileInput.files.length > 0;
+
+    // Actualizar texto del botón de plantilla con el número de CCTs detectadas
+    const textoBtn = document.getElementById('textoBtnPlantilla');
+    if (textoBtn) {
+        if (validas.length > 0) {
+            textoBtn.textContent = `Descargar Plantilla con ${validas.length} CCTs (.xlsx)`;
+        } else {
+            textoBtn.textContent = 'Descargar Plantilla Excel (.xlsx)';
+        }
+    }
+
+    if (validas.length > 0 || tieneArchivo) {
+        btnSubmit.disabled = false;
+        btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+        btnSubmit.disabled = true;
+        btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    // Si está visible la tabla de directores, actualizar filas
+    const contenedorTabla = document.getElementById('contenedorTablaDirectores');
+    if (!contenedorTabla.classList.contains('hidden')) {
+        renderizarTablaDirectores();
+    }
+}
+
+function renderizarTablaDirectores() {
+    const tbody = document.getElementById('cuerpoTablaDirectores');
+    if (cctsValidasGlobal.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-4 text-center text-slate-400 italic">Pegue las CCTs arriba para capturar datos de directores.</td></tr>`;
+        return;
+    }
+
+    // Guardar valores previos que el usuario ya haya tecleado en la tabla
+    let valoresPrevios = {};
+    document.querySelectorAll('.fila-director').forEach(tr => {
+        let c = tr.getAttribute('data-cct');
+        if (c) {
+            valoresPrevios[c] = {
+                correo: tr.querySelector('.input-correo')?.value || '',
+                nombre: tr.querySelector('.input-nombre')?.value || '',
+                tel: tr.querySelector('.input-tel')?.value || ''
+            };
+        }
+    });
+
+    // Si no había valores en el DOM, intentar desde borrador guardado en localStorage
+    if (Object.keys(valoresPrevios).length === 0) {
+        try {
+            const raw = localStorage.getItem('sidi_borrador_masivo');
+            if (raw) {
+                const b = JSON.parse(raw);
+                if (b && b.datosDirectores) valoresPrevios = b.datosDirectores;
+            }
+        } catch(e) {}
+    }
+
+    let html = '';
+    cctsValidasGlobal.forEach((cct, idx) => {
+        let prev = valoresPrevios[cct] || {};
+        html += `
+        <tr class="fila-director hover:bg-slate-50 transition" data-cct="${cct}">
+            <td class="px-3 py-2 text-center font-bold text-slate-400">${idx + 1}</td>
+            <td class="px-3 py-2 font-mono font-bold text-primary">${cct}</td>
+            <td class="px-3 py-2">
+                <input type="email" placeholder="director@gmail.com" value="${prev.correo || ''}" oninput="guardarBorradorMasivo()"
+                       class="input-correo w-full px-2 py-1 rounded border border-slate-200 focus:ring-1 focus:ring-primary focus:outline-none font-mono text-[11px]">
+            </td>
+            <td class="px-3 py-2">
+                <input type="text" placeholder="Nombre completo" value="${prev.nombre || ''}" oninput="guardarBorradorMasivo()"
+                       class="input-nombre w-full px-2 py-1 rounded border border-slate-200 focus:ring-1 focus:ring-primary focus:outline-none text-[11px]">
+            </td>
+            <td class="px-3 py-2">
+                <input type="tel" maxlength="10" placeholder="951..." value="${prev.tel || ''}" oninput="guardarBorradorMasivo()"
+                       class="input-tel w-full px-2 py-1 rounded border border-slate-200 focus:ring-1 focus:ring-primary focus:outline-none font-mono text-[11px]">
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function prepararEnvioMasivo(e) {
+    // Si está en modo directores, empaquetar datos de la tabla a JSON
+    const modoChecked = document.querySelector('input[name="modo_envio"]:checked')?.value || 'supervision';
+    if (modoChecked !== 'supervision') {
+        let directoresArr = [];
+        document.querySelectorAll('.fila-director').forEach(tr => {
+            let cct = tr.getAttribute('data-cct');
+            let correo = tr.querySelector('.input-correo')?.value?.trim() || '';
+            let nombre = tr.querySelector('.input-nombre')?.value?.trim() || '';
+            let telefono = tr.querySelector('.input-tel')?.value?.trim() || '';
+            if (cct) {
+                directoresArr.push({ cct, correo, nombre, telefono });
+            }
+        });
+        document.getElementById('directores_json').value = JSON.stringify(directoresArr);
+    }
+    // Limpiar borrador al enviar con éxito
+    localStorage.removeItem('sidi_borrador_masivo');
+}
+
+// ================= AUTO-GUARDADO DE BORRADOR (LOCALSTORAGE) =================
+let timerGuardado = null;
+function guardarBorradorMasivo() {
+    clearTimeout(timerGuardado);
+    timerGuardado = setTimeout(() => {
+        let modoChecked = document.querySelector('input[name="modo_envio"]:checked')?.value || 'supervision';
+        let datosDirectores = {};
+        document.querySelectorAll('.fila-director').forEach(tr => {
+            let c = tr.getAttribute('data-cct');
+            if (c) {
+                datosDirectores[c] = {
+                    correo: tr.querySelector('.input-correo')?.value || '',
+                    nombre: tr.querySelector('.input-nombre')?.value || '',
+                    tel: tr.querySelector('.input-tel')?.value || ''
+                };
+            }
+        });
+
+        const borrador = {
+            nombre_supervisor: document.getElementById('nombre_supervisor')?.value || '',
+            zona_escolar: document.getElementById('zona_escolar')?.value || '',
+            cct_supervision: document.getElementById('cct_supervision')?.value || '',
+            incluir_cct_supervision: document.getElementById('incluir_cct_supervision')?.checked ?? true,
+            cargo_solicitante: document.getElementById('cargo_solicitante')?.value || '',
+            telefono_contacto: document.getElementById('telefono_contacto')?.value || '',
+            correo_supervision: document.getElementById('correo_supervision')?.value || '',
+            region: document.getElementById('region')?.value || '',
+            nivel_educativo: document.getElementById('nivel_educativo')?.value || '',
+            modo_envio: modoChecked,
+            ccts_texto: document.getElementById('ccts_texto')?.value || '',
+            datosDirectores: datosDirectores
+        };
+        localStorage.setItem('sidi_borrador_masivo', JSON.stringify(borrador));
+
+        const badge = document.getElementById('badgeGuardado');
+        if (badge) {
+            badge.classList.remove('hidden');
+            setTimeout(() => badge.classList.add('hidden'), 2000);
+        }
+    }, 500);
+
+    // Keep-alive ping
+    fetch('/admin/ping').catch(() => {});
+}
+
+function restaurarBorradorMasivo() {
+    const raw = localStorage.getItem('sidi_borrador_masivo');
+    if (!raw) return;
+
+    try {
+        const d = JSON.parse(raw);
+        if (!d.nombre_supervisor && !d.ccts_texto && !d.zona_escolar) return;
+
+        if (d.nombre_supervisor) document.getElementById('nombre_supervisor').value = d.nombre_supervisor;
+        if (d.zona_escolar) document.getElementById('zona_escolar').value = d.zona_escolar;
+        if (d.cct_supervision) document.getElementById('cct_supervision').value = d.cct_supervision;
+        if (d.incluir_cct_supervision !== undefined) document.getElementById('incluir_cct_supervision').checked = d.incluir_cct_supervision;
+        if (d.cargo_solicitante) document.getElementById('cargo_solicitante').value = d.cargo_solicitante;
+        if (d.telefono_contacto) document.getElementById('telefono_contacto').value = d.telefono_contacto;
+        if (d.correo_supervision) document.getElementById('correo_supervision').value = d.correo_supervision;
+        if (d.region) document.getElementById('region').value = d.region;
+        if (d.nivel_educativo) document.getElementById('nivel_educativo').value = d.nivel_educativo;
+        if (d.ccts_texto) document.getElementById('ccts_texto').value = d.ccts_texto;
+
+        if (d.modo_envio) {
+            const radio = document.querySelector(`input[name="modo_envio"][value="${d.modo_envio}"]`);
+            if (radio) {
+                radio.checked = true;
+                cambiarModoEnvio(d.modo_envio);
+            }
+        }
+
+        const banner = document.getElementById('bannerBorrador');
+        if (banner) banner.classList.remove('hidden');
+
+        // Analizar CCTs restauradas inmediatamente para refrescar contadores y tabla
+        analizarCCTs();
+    } catch (e) {
+        console.error("Error restaurando borrador:", e);
+    }
+}
+
+function limpiarBorradorMasivo() {
+    localStorage.removeItem('sidi_borrador_masivo');
+    document.getElementById('formMasivo').reset();
+    document.getElementById('bannerBorrador').classList.add('hidden');
+    cambiarModoEnvio('supervision');
+    analizarCCTs();
+}
+
+// Descargar plantilla Excel (.xlsx) preformateada
+function descargarPlantillaExcel() {
+    let url = '/admin/solicitudes/plantilla-excel';
+    if (cctsValidasGlobal && cctsValidasGlobal.length > 0) {
+        url += '?ccts=' + encodeURIComponent(cctsValidasGlobal.join(','));
+    }
+    window.location.href = url;
+}
+
+// Analizar archivo Excel/CSV cuando se selecciona
+function analizarArchivoExcel(input) {
+    const badge = document.getElementById('badgeArchivoListo');
+    const texto = document.getElementById('textoArchivoListo');
+    if (input && input.files && input.files.length > 0) {
+        const file = input.files[0];
+        const sizeKb = Math.round(file.size / 1024) || 1;
+        if (texto) {
+            texto.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i> Archivo listo: <strong>${file.name}</strong> (${sizeKb} KB)`;
+        }
+        if (badge) badge.classList.remove('hidden');
+    } else {
+        if (badge) badge.classList.add('hidden');
+    }
+    analizarCCTs();
+}
+
+// Quitar archivo seleccionado
+function quitarArchivoExcel() {
+    const input = document.getElementById('archivo_excel');
+    if (input) input.value = '';
+    const badge = document.getElementById('badgeArchivoListo');
+    if (badge) badge.classList.add('hidden');
+    analizarCCTs();
+}
+</script>
+{% endblock %}

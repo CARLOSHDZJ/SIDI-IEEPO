@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración y Parametrización | SIDI{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200 gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">Identidad, Mensajes y Parámetros del Sistema</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Ajuste colores institucionales, plantillas de correo, datos de contacto, accesos de usuarios y credenciales.
+            </p>
+        </div>
+
+        {% if mensaje_guardado %}
+        <div class="px-4 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            <span>¡Configuración guardada exitosamente!</span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if usuario_msg %}
+    <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center justify-between shadow-sm animate-fade-in">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <span>{{ usuario_msg }}</span>
+        </div>
+        <a href="/admin/configuracion?tab=tab-usuarios" class="text-emerald-700 hover:text-emerald-900">&times;</a>
+    </div>
+    {% endif %}
+
+    {% if usuario_err %}
+    <div class="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-bold text-xs flex items-center justify-between shadow-sm animate-fade-in">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-xmark text-rose-600 text-base"></i>
+            <span>{{ usuario_err }}</span>
+        </div>
+        <a href="/admin/configuracion?tab=tab-usuarios" class="text-rose-700 hover:text-rose-900">&times;</a>
+    </div>
+    {% endif %}
+
+    <!-- Navegación por pestañas (Tabs) en JS puro -->
+    <div class="border-b border-slate-200 mb-8 flex space-x-2 overflow-x-auto text-xs font-bold">
+        <button onclick="cambiarTab('tab-branding')" id="btn-branding" class="tab-btn px-4 py-3 border-b-2 border-primary text-primary transition flex items-center space-x-2">
+            <i class="fa-solid fa-palette"></i>
+            <span>Branding & Colores</span>
+        </button>
+        <button onclick="cambiarTab('tab-plantillas')" id="btn-plantillas" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center space-x-2">
+            <i class="fa-solid fa-envelope-open-text"></i>
+            <span>Plantillas de Correo</span>
+        </button>
+        <button onclick="cambiarTab('tab-contacto')" id="btn-contacto" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center space-x-2">
+            <i class="fa-solid fa-address-card"></i>
+            <span>Contacto y Oficinas</span>
+        </button>
+        <button onclick="cambiarTab('tab-smtp')" id="btn-smtp" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center space-x-2">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Servidor SMTP</span>
+        </button>
+        <button onclick="cambiarTab('tab-portal')" id="btn-portal" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center space-x-2">
+            <i class="fa-solid fa-robot"></i>
+            <span>Portal ExtJS (Bot)</span>
+        </button>
+        <button onclick="cambiarTab('tab-usuarios')" id="btn-usuarios" class="tab-btn px-4 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center space-x-2">
+            <i class="fa-solid fa-users-gear"></i>
+            <span>Gestión de Usuarios</span>
+        </button>
+    </div>
+
+    <!-- Formulario Principal de Configuración -->
+    <form action="/admin/configuracion" method="POST" id="formConfig" class="space-y-8">
+
+        <!-- ================= TAB 1: BRANDING & COLORES ================= -->
+        <div id="tab-branding" class="tab-content space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <h3 class="text-base font-bold text-slate-800 mb-1 flex items-center">
+                    <i class="fa-solid fa-brush mr-2 text-primary"></i> Identidad Institucional y Paleta de Colores
+                </h3>
+                <p class="text-xs text-slate-500 mb-6">
+                    Ajuste los colores que distinguen la administración actual. Se reflejan en tiempo real en botones, encabezados y correos.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre Oficial de la Institución</label>
+                        <input type="text" name="nombre_institucion" value="{{ config.get('nombre_institucion', '') }}" required
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus-ring-primary text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Subtítulo del Sistema</label>
+                        <input type="text" name="subtitulo_sistema" value="{{ config.get('subtitulo_sistema', '') }}" required
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus-ring-primary text-sm">
+                    </div>
+
+                    <!-- Selector Color Primario -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Color Primario Institucional</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="color" id="color_primario_picker" value="{{ config.get('color_primario', '#8B1D42') }}"
+                                   onchange="document.getElementById('color_primario_txt').value = this.value"
+                                   class="h-10 w-14 rounded border border-slate-300 cursor-pointer p-1">
+                            <input type="text" id="color_primario_txt" name="color_primario" value="{{ config.get('color_primario', '#8B1D42') }}" required
+                                   onchange="document.getElementById('color_primario_picker').value = this.value"
+                                   class="w-32 px-3 py-2 font-mono text-sm uppercase rounded-lg border border-slate-300">
+                        </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Utilizado en barra superior, botones principales y banners.</span>
+                    </div>
+
+                    <!-- Selector Color Secundario -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Color Secundario / Acento</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="color" id="color_secundario_picker" value="{{ config.get('color_secundario', '#B28834') }}"
+                                   onchange="document.getElementById('color_secundario_txt').value = this.value"
+                                   class="h-10 w-14 rounded border border-slate-300 cursor-pointer p-1">
+                            <input type="text" id="color_secundario_txt" name="color_secundario" value="{{ config.get('color_secundario', '#B28834') }}" required
+                                   onchange="document.getElementById('color_secundario_picker').value = this.value"
+                                   class="w-32 px-3 py-2 font-mono text-sm uppercase rounded-lg border border-slate-300">
+                        </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Utilizado en líneas de acento, bordes destacados e íconos.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subida de Logotipo Separada -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <h3 class="text-base font-bold text-slate-800 mb-1 flex items-center">
+                    <i class="fa-solid fa-image mr-2 text-secondary"></i> Logotipo Institucional
+                </h3>
+                <p class="text-xs text-slate-500 mb-4">Cargue el escudo o imagen oficial (formatos recomendados: SVG, PNG o JPG transparente).</p>
+
+                <div class="flex flex-col sm:flex-row items-center gap-6">
+                    <div class="w-44 h-24 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center p-3 shadow-inner">
+                        <img src="{{ config.get('logo_url', '/static/uploads/logos/logo_default.svg') }}" alt="Logo Actual" class="max-h-full max-w-full object-contain">
+                    </div>
+                    <div class="text-xs text-slate-500">
+                        <p class="font-semibold text-slate-700">Ruta activa: <span class="font-mono text-slate-500">{{ config.get('logo_url', '') }}</span></p>
+                        <button type="button" onclick="document.getElementById('modalSubirLogo').classList.remove('hidden')" class="mt-3 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition flex items-center space-x-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>Reemplazar Logotipo</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 2: PLANTILLAS DE CORREO ================= -->
+        <div id="tab-plantillas" class="tab-content space-y-6 hidden">
+            <!-- Caso Éxito -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div class="flex items-center space-x-2 mb-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                    <h3 class="text-base font-bold text-slate-800">Plantilla de Despacho Exitoso (Cédula Emitida)</h3>
+                </div>
+                <p class="text-xs text-slate-500 mb-4">
+                    Este correo se envía cuando la CCT es localizada con éxito en el portal y se adjuntan los formatos.
+                </p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Asunto del Correo</label>
+                        <input type="text" name="template_exito_asunto" value="{{ config.get('template_exito_asunto', '') }}" required
+                               class="w-full px-3.5 py-2 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-semibold text-slate-700">Cuerpo del Correo (Soporta HTML)</label>
+                            <span class="text-[11px] text-slate-400">Variables disponibles: {nombre}, {cct}, {cargo}, {folio}, {oficina_telefono}, etc.</span>
+                        </div>
+                        <textarea name="template_exito_cuerpo" rows="7" required
+                                  class="w-full p-3.5 rounded-lg border border-slate-300 font-mono text-xs text-slate-800 focus:ring-2 focus-ring-primary">{{ config.get('template_exito_cuerpo', '') }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Caso CCT No Encontrada -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div class="flex items-center space-x-2 mb-2">
+                    <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+                    <h3 class="text-base font-bold text-slate-800">Plantilla para CCT No Localizada en Padrón</h3>
+                </div>
+                <p class="text-xs text-slate-500 mb-4">
+                    Este correo se envía de inmediato al usuario explicándole que su centro no está dado de alta y facilitándole números y dirección para regularizarse.
+                </p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Asunto del Correo</label>
+                        <input type="text" name="template_no_encontrada_asunto" value="{{ config.get('template_no_encontrada_asunto', '') }}" required
+                               class="w-full px-3.5 py-2 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Cuerpo del Correo (Soporta HTML)</label>
+                        <textarea name="template_no_encontrada_cuerpo" rows="7" required
+                                  class="w-full p-3.5 rounded-lg border border-slate-300 font-mono text-xs text-slate-800 focus:ring-2 focus-ring-primary">{{ config.get('template_no_encontrada_cuerpo', '') }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: CONTACTO Y OFICINAS ================= -->
+        <div id="tab-contacto" class="tab-content space-y-6 hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <h3 class="text-base font-bold text-slate-800 mb-1 flex items-center">
+                    <i class="fa-solid fa-building-columns mr-2 text-primary"></i> Información de Contacto y Atención al Público
+                </h3>
+                <p class="text-xs text-slate-500 mb-6">
+                    Estos datos se insertan dinámicamente en el pie de página del portal y en todos los correos de atención.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Departamento / Área Responsable</label>
+                        <input type="text" name="oficina_departamento" value="{{ config.get('oficina_departamento', '') }}" required
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Teléfonos Oficiales y WhatsApp</label>
+                        <input type="text" name="oficina_telefono" value="{{ config.get('oficina_telefono', '') }}" required
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Correo Institucional de Atención</label>
+                        <input type="email" name="oficina_correo" value="{{ config.get('oficina_correo', '') }}" required
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Dirección Física de la Oficina</label>
+                        <input type="text" name="oficina_direccion" value="{{ config.get('oficina_direccion', '') }}" required
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Horario Oficial de Atención</label>
+                        <input type="text" name="oficina_horario" value="{{ config.get('oficina_horario', '') }}" required
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">
+                            URL Pública del Servidor / Web de Ayuda y Rastreo
+                        </label>
+                        <input type="url" name="url_sistema" value="{{ config.get('url_sistema', 'http://localhost:8000') }}" required
+                               placeholder="Ej: http://192.168.1.50:8000 o https://portal-inventarios.ejemplo.gob.mx"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                        <span class="text-[11px] text-slate-400 mt-1 block">
+                            Esta dirección se inserta en los botones de los correos automáticos para que los directores puedan dar clic y entrar a la <strong>Ventanilla Web de Ayuda y Rastreo</strong>. Al montar el sistema en su servidor Linux, ingrese aquí la IP o dominio del servidor.
+                        </span>
+                    </div>
+
+                    <!-- Validación OTP Opcional -->
+                    <div class="sm:col-span-2 pt-4 border-t border-slate-100">
+                        <div class="p-4 rounded-xl bg-purple-50/70 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <span class="text-xs font-bold text-purple-950 flex items-center">
+                                    <i class="fa-solid fa-shield-halved mr-1.5 text-purple-700"></i> Validación de Identidad por Código OTP (2FA Ligero)
+                                </span>
+                                <span class="text-[11px] text-purple-900/80 mt-0.5 block">
+                                    Si desactiva esta opción, las solicitudes se encolarán de forma inmediata y directa al registrarse sin requerir que el director confirme un código por correo. Útil si el correo saliente experimenta demoras.
+                                </span>
+                            </div>
+                            <select name="requerir_otp" class="px-3.5 py-2 rounded-lg border border-purple-300 text-xs font-bold bg-white text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="true" {% if config.get('requerir_otp') != 'false' %}selected{% endif %}>Activado (Requiere Código OTP de 6 dígitos)</option>
+                                <option value="false" {% if config.get('requerir_otp') == 'false' %}selected{% endif %}>Desactivado (Despacho Directo Automático)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 4: SERVIDOR SMTP ================= -->
+        <div id="tab-smtp" class="tab-content space-y-6 hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-server mr-2 text-primary"></i> Configuración de Servidor SMTP Saliente
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Credenciales para el despacho automático de correos con aiosmtplib.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Servidor SMTP Host</label>
+                        <input type="text" name="smtp_host" id="smtp_host" value="{{ config.get('smtp_host', '') }}" placeholder="smtp.gmail.com o smtp.office365.com"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Puerto</label>
+                        <input type="number" name="smtp_port" id="smtp_port" value="{{ config.get('smtp_port', '587') }}"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Usuario / Correo Remitente</label>
+                        <input type="text" name="smtp_user" id="smtp_user" value="{{ config.get('smtp_user', '') }}" placeholder="usuario@ejemplo.gob.mx"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Contraseña / App Password</label>
+                        <input type="password" name="smtp_password" id="smtp_password" value="{{ config.get('smtp_password', '') }}" placeholder="••••••••••••"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Seguridad TLS</label>
+                        <select name="smtp_use_tls" id="smtp_use_tls" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs">
+                            <option value="true" {% if config.get('smtp_use_tls') == 'true' %}selected{% endif %}>Habilitado (STARTTLS / TLS)</option>
+                            <option value="false" {% if config.get('smtp_use_tls') == 'false' %}selected{% endif %}>Deshabilitado</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Email Remitente Visible</label>
+                        <input type="email" name="smtp_from_email" value="{{ config.get('smtp_from_email', '') }}"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre Remitente Visible</label>
+                        <input type="text" name="smtp_from_name" value="{{ config.get('smtp_from_name', '') }}"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs">
+                    </div>
+                </div>
+
+                <!-- Botón de Prueba de Conexión SMTP -->
+                <div class="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between">
+                    <span id="smtpTestStatus" class="text-xs font-semibold text-slate-500"></span>
+                    <button type="button" onclick="probarConexionSMTP()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center space-x-2 transition">
+                        <i class="fa-solid fa-vial"></i>
+                        <span>Probar Conexión SMTP</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: PORTAL EXTJS (BOT) ================= -->
+        <div id="tab-portal" class="tab-content space-y-6 hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-robot mr-2 text-primary"></i> Parámetros de Extracción en Portal Central
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            Configure el usuario, contraseña y URL del portal central. Si en el futuro cambian las credenciales o el enlace oficial, puede actualizarlos aquí sin tocar el código.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">URL Central de Inventarios ExtJS</label>
+                        <input type="url" name="portal_url" id="portal_url" value="{{ config.get('portal_url', 'https://portal-inventarios.ejemplo.gob.mx/#login') }}" required
+                               placeholder="https://portal-inventarios.ejemplo.gob.mx/#login"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Usuario del Portal Central</label>
+                        <input type="text" name="portal_user" id="portal_user" value="{{ config.get('portal_user', '') }}"
+                               placeholder="usuario_ieepo"
+                               class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Contraseña del Portal Central</label>
+                        <div class="relative">
+                            <input type="password" name="portal_password" id="portal_password" value="{{ config.get('portal_password', '') }}"
+                                   placeholder="••••••••••••"
+                                   class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 font-mono text-xs pr-10">
+                            <button type="button" onclick="const p = document.getElementById('portal_password'); p.type = p.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                                <i class="fa-solid fa-eye text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Modo Simulación / Diagnóstico -->
+                    <div class="sm:col-span-2 p-4 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <span class="text-xs font-bold text-amber-950 block">Modo Simulación / Diagnóstico Local</span>
+                            <span class="text-[11px] text-amber-800">
+                                Desactive esta opción para que el Worker consulte en tiempo real el servidor central del IEEPO con sus credenciales oficiales.
+                            </span>
+                        </div>
+                        <select name="portal_simulacion" class="px-3 py-1.5 rounded-lg border border-amber-300 text-xs font-bold bg-white">
+                            <option value="false" {% if config.get('portal_simulacion') != 'true' %}selected{% endif %}>Desactivado (Producción ExtJS Real)</option>
+                            <option value="true" {% if config.get('portal_simulacion') == 'true' %}selected{% endif %}>Activado (Modo Simulación)</option>
+                        </select>
+                    </div>
+
+                    <!-- Botón de Prueba de Conexión al Portal IEEPO -->
+                    <div class="sm:col-span-2 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <span id="portalTestStatus" class="text-xs font-semibold text-slate-500"></span>
+                        <button type="button" onclick="probarConexionPortal()" class="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center space-x-2 transition shadow-sm">
+                            <i class="fa-solid fa-plug-circle-check text-secondary"></i>
+                            <span>Probar Conexión al Portal IEEPO</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón Guardar Flotante / Inferior -->
+        <div id="contenedorBotonGuardar" class="pt-6 border-t border-slate-200 flex items-center justify-end">
+            <button type="submit" class="btn-primary py-3 px-8 rounded-xl font-black text-sm shadow-lg flex items-center space-x-2">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Guardar Todos los Cambios</span>
+            </button>
+        </div>
+    </form>
+
+    <!-- ================= TAB 6: GESTIÓN DE USUARIOS ================= -->
+    <div id="tab-usuarios" class="tab-content space-y-6 hidden mt-8">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4 mb-6">
+                <div>
+                    <h3 class="text-base font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-users-gear mr-2 text-primary"></i> Control de Usuarios Administrativos
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">
+                        Gestione el personal con autorización para acceder al panel de control, monitoreo y despacho.
+                    </p>
+                </div>
+                <button type="button" onclick="abrirModalCrearUsuario()" class="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Registrar Nuevo Usuario</span>
+                </button>
+            </div>
+
+            <!-- Tabla de Usuarios -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-600">
+                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3">Usuario</th>
+                            <th class="px-4 py-3">Nombre Completo</th>
+                            <th class="px-4 py-3">Estatus</th>
+                            <th class="px-4 py-3">Fecha de Alta</th>
+                            <th class="px-4 py-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for u in usuarios %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-4 py-3.5 font-mono font-bold text-slate-800">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs">
+                                        <i class="fa-solid fa-user-shield"></i>
+                                    </div>
+                                    <span>{{ u.username }}</span>
+                                    {% if u.username == current_user %}
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 font-bold font-sans">TÚ</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-4 py-3.5 font-medium text-slate-700">
+                                {{ u.nombre or '—' }}
+                            </td>
+                            <td class="px-4 py-3.5">
+                                {% if u.activo %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    <i class="fa-solid fa-circle-check mr-1"></i> Activo
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600">
+                                    <i class="fa-solid fa-circle-xmark mr-1"></i> Inactivo
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3.5 text-slate-400">
+                                {{ u.creado_en.strftime('%d/%m/%Y %H:%M') if u.creado_en else '—' }}
+                            </td>
+                            <td class="px-4 py-3.5 text-center">
+                                <div class="flex items-center justify-center space-x-2">
+                                    <button type="button" onclick="abrirModalEditarUsuario({{ u.id }}, '{{ u.username }}', '{{ u.nombre or '' }}', {{ 'true' if u.activo else 'false' }})" class="p-1.5 text-slate-500 hover:text-primary hover:bg-slate-100 rounded-lg transition" title="Modificar Usuario">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    {% if u.username != current_user and usuarios|length > 1 %}
+                                    <form action="/admin/usuarios/{{ u.id }}/eliminar" method="POST" onsubmit="return confirm('¿Está seguro de que desea eliminar permanentemente al usuario {{ u.username }}?');">
+                                        <button type="submit" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Eliminar Usuario">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal para Subir Logotipo -->
+<div id="modalSubirLogo" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-base text-slate-800">Cargar Nuevo Logotipo</h3>
+            <button onclick="document.getElementById('modalSubirLogo').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <form action="/admin/configuracion/logo" method="POST" enctype="multipart/form-data" class="space-y-4 mt-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-700 mb-1">Archivo de Imagen (SVG, PNG, JPG, WEBP)</label>
+                <input type="file" name="logo" required accept="image/*"
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none text-xs">
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('modalSubirLogo').classList.add('hidden')" 
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-primary px-5 py-2 rounded-lg font-bold shadow-sm">
+                    Subir y Aplicar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Registrar Nuevo Usuario -->
+<div id="modalCrearUsuario" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-base text-slate-800 flex items-center">
+                <i class="fa-solid fa-user-plus mr-2 text-primary"></i> Registrar Nuevo Usuario
+            </h3>
+            <button onclick="cerrarModalCrearUsuario()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <form action="/admin/usuarios/crear" method="POST" class="space-y-4 mt-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nombre Completo</label>
+                <input type="text" name="nombre" required placeholder="Ej: Lic. María Pérez"
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-xs">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nombre de Usuario (Login)</label>
+                <input type="text" name="username" required placeholder="Ej: mperez"
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-xs font-mono">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-700 mb-1">Contraseña Inicial</label>
+                <input type="password" name="password" required placeholder="••••••••"
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-xs">
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button type="button" onclick="cerrarModalCrearUsuario()" 
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-primary px-5 py-2 rounded-lg font-bold shadow-sm flex items-center space-x-1.5">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Crear Usuario</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Modificar Usuario -->
+<div id="modalEditarUsuario" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-base text-slate-800 flex items-center">
+                <i class="fa-solid fa-user-pen mr-2 text-primary"></i> Modificar Usuario
+            </h3>
+            <button onclick="cerrarModalEditarUsuario()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <form id="formEditarUsuario" method="POST" class="space-y-4 mt-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-500 mb-1">Nombre de Usuario (No modificable)</label>
+                <input type="text" id="edit_username" disabled
+                       class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-600 text-xs font-mono font-bold">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nombre Completo</label>
+                <input type="text" id="edit_nombre" name="nombre" required
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-xs">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nueva Contraseña (Opcional)</label>
+                <input type="password" name="password" placeholder="Dejar en blanco para conservar la actual"
+                       class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus-ring-primary text-xs">
+                <p class="text-[10px] text-slate-400 mt-0.5">Escriba una contraseña únicamente si desea cambiarla.</p>
+            </div>
+            <div class="pt-2">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" id="edit_activo" name="activo" value="true"
+                           class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary">
+                    <span class="font-semibold text-slate-700">Usuario Activo (Permitir acceso al sistema)</span>
+                </label>
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button type="button" onclick="cerrarModalEditarUsuario()" 
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-primary px-5 py-2 rounded-lg font-bold shadow-sm flex items-center space-x-1.5">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Guardar Cambios</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function cambiarTab(tabId) {
+        // Ocultar todos los tabs
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(el => {
+            el.classList.remove('border-primary', 'text-primary');
+            el.classList.add('border-transparent', 'text-slate-500');
+        });
+
+        // Mostrar tab activo
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) {
+            targetTab.classList.remove('hidden');
+        }
+
+        const btnId = 'btn-' + tabId.replace('tab-', '');
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.classList.add('border-primary', 'text-primary');
+            btn.classList.remove('border-transparent', 'text-slate-500');
+        }
+
+        // Ocultar botón "Guardar Todos los Cambios" del formulario general si estamos en tab-usuarios
+        const btnGuardarGeneral = document.getElementById('contenedorBotonGuardar');
+        if (btnGuardarGeneral) {
+            if (tabId === 'tab-usuarios') {
+                btnGuardarGeneral.classList.add('hidden');
+            } else {
+                btnGuardarGeneral.classList.remove('hidden');
+            }
+        }
+    }
+
+    function abrirModalCrearUsuario() {
+        document.getElementById('modalCrearUsuario').classList.remove('hidden');
+    }
+
+    function cerrarModalCrearUsuario() {
+        document.getElementById('modalCrearUsuario').classList.add('hidden');
+    }
+
+    function abrirModalEditarUsuario(id, username, nombre, activo) {
+        document.getElementById('formEditarUsuario').action = '/admin/usuarios/' + id + '/editar';
+        document.getElementById('edit_username').value = username;
+        document.getElementById('edit_nombre').value = nombre;
+        document.getElementById('edit_activo').checked = Boolean(activo);
+        document.getElementById('modalEditarUsuario').classList.remove('hidden');
+    }
+
+    function cerrarModalEditarUsuario() {
+        document.getElementById('modalEditarUsuario').classList.add('hidden');
+    }
+
+    async function probarConexionSMTP() {
+        const statusEl = document.getElementById('smtpTestStatus');
+        statusEl.innerHTML = '<span class="text-blue-600"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Verificando conexión...</span>';
+
+        const formData = new FormData();
+        formData.append('smtp_host', document.getElementById('smtp_host').value);
+        formData.append('smtp_port', document.getElementById('smtp_port').value);
+        formData.append('smtp_user', document.getElementById('smtp_user').value);
+        formData.append('smtp_password', document.getElementById('smtp_password').value);
+        formData.append('smtp_use_tls', document.getElementById('smtp_use_tls').value);
+
+        try {
+            const resp = await fetch('/admin/configuracion/probar-smtp', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+            if (data.exito) {
+                statusEl.innerHTML = '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> ' + data.mensaje + '</span>';
+            } else {
+                statusEl.innerHTML = '<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> ' + data.mensaje + '</span>';
+            }
+        } catch (e) {
+            statusEl.innerHTML = '<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> Error de red al probar conexión SMTP.</span>';
+        }
+    }
+
+    async function probarConexionPortal() {
+        const statusEl = document.getElementById('portalTestStatus');
+        statusEl.innerHTML = '<span class="text-blue-600"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Verificando autenticación con el portal central IEEPO...</span>';
+
+        const formData = new FormData();
+        formData.append('portal_url', document.getElementById('portal_url').value);
+        formData.append('portal_user', document.getElementById('portal_user').value);
+        formData.append('portal_password', document.getElementById('portal_password').value);
+
+        try {
+            const resp = await fetch('/admin/configuracion/probar-portal', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+            if (data.exito) {
+                statusEl.innerHTML = '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> ' + data.mensaje + '</span>';
+            } else {
+                statusEl.innerHTML = '<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> ' + data.mensaje + '</span>';
+            }
+        } catch (e) {
+            statusEl.innerHTML = '<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> Error de red al comunicar con el servidor local.</span>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabInicial = '{{ tab_activo }}';
+        if (tabInicial) {
+            cambiarTab(tabInicial);
+        }
+    });
+</script>
+{% endblock %}

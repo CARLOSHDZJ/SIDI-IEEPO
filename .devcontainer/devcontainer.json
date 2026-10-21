@@ -1,0 +1,11 @@
+{
+  "name": "SIDI - Sistema de Despacho de Inventarios (Demo)",
+  "postCreateCommand": "pip install -r requirements.txt",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "SIDI Ventanilla Digital y Panel Admin",
+      "onAutoForward": "openPreview"
+    }
+  }
+}
